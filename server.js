@@ -10,12 +10,14 @@
     var uuid = require('node-uuid');            // used to generate uuid's to identify files
     var Reader = require('./readpcap.js');      // used to read a pcap-file and get the buffer back
     var Sender = require('./sender.js');        // used to send packages through network
-    var Recorder = require('./recorder.js');    // used to record packages from network
+    var Recorder = require('./record');         // used to record packages from network to pcap-file
     var io = require('socket.io')(http);        // used for sending push notifications to clients
 
     var uploadFolder = 'static/uploads';        // Define Upload-Folder for all Actions with Files
     var files = [];                             // Storage for file-items
     var packagesLength = 0;                     // size of packages in pcap-file
+    var record = new Recorder();                // Used for Recording pcap-files
+    var send = new Sender();                    // Used for Sending pcap-files
 
 //PushNotification Update-States
     var UPDATE_ALL = 0;
@@ -195,74 +197,47 @@
     }
 
 //Sending Packages =====================
-//Read and send pcap-file
-var readAndSend = function(datapath, callback) {
-    Reader.read(datapath, function(content) {
-        packagesLength = content.length;
-        serverStatus = packagesLength + " Packages read";
-        sendPushNotification(UPDATE_STATUS);
-        var sender = new Sender(content, '192.168.120.170', 6454);
+//play a file
+app.get('/api/play/:file_id', function(req, res, next) {
+    getFilePath(req.params.file_id, function(filepath) {
+        if(filepath != "error") {
+            selectedFileID = req.params.file_id;
+            selectedFilePath = filepath;
+            console.log("play: " + selectedFilePath);
+            console.log("play: " + selectedFileID);
 
-        // Event-Listener
-        sender.on('openStarted', function() {
-            serverStatus = "sending packages";
+            serverStatus = "Processing file";
             sendPushNotification(UPDATE_STATUS);
-        })
 
-        sender.on('packageSend', function(packagenumber) {
-            serverStatus = "sending packages";
+            send.playFile(selectedFilePath,"192.168.120.2",6454);
+
+            setTimeout(function() {  //After 20 Seconds, send Update to Client
+                send.stopFile();
+            },20000);
+
+        }
+        else {
+            serverStatus = "FileIO-Error! Please refresh site!";
             sendPushNotification(UPDATE_STATUS);
-        })
-
-        sender.on('end', function(length) {
-            serverStatus = length + " Packages sent";
-            sendPushNotification(UPDATE_STATUS);
-            callback(length);
-        })
-
-        sender.on('error', function(err) {
-            serverError = err;
-            sendPushNotification(UPDATE_ERROR);
-        })
+            res.send();
+        }
     })
-}
+});
 
 //Recording Packages ===================
-//Record pcap-file
-var recordPackages = function(iface, filename, packagelimit, callback) {
-    //Create new Recorder-Object
-    var recorder = new Recorder(iface, filename, packagelimit, callback);
+//start record a file
+app.get('/api/startrecord/:file_name', function(req, res, next) {
+    console.log("Record " + req.params.file_name + " started");
+    record.startRecord(req.params.file_name + ".pcap", 6454);
+    res.send({recordFileID: 123, recordFilePath: req.params.file_name, state: "recordingStart"});
+});
 
-    //Event-Listener
-    recorder.on('start', function() {
-        serverStatus = 'recording';
-        sendPushNotification(UPDATE_STATUS);
-    })
-
-    recorder.on('err', function(data) {
-        serverError = data;
-        sendPushNotification(UPDATE_ERROR);
-    })
-
-    recorder.on('err_filepath', function(err) {
-        serverError = err;
-        sendPushNotification(UPDATE_ERROR);
-    })
-
-    recorder.on('err_finished', function(code) {
-        serverError = 'not sure what happened. Recorder returns: ' + code;
-        sendPushNotification(UPDATE_ERROR);
-    })
-
-    recorder.on('finished', function() {
-        serverStatus = 'Recording finished =)';
-        sendPushNotification(UPDATE_STATUS);
-    })
-}
-
-var stopRecord = function() {
-    recorder.stopRecord();
-}
+//stop record a file
+app.get('/api/stoprecord/:file_name', function(req, res, next) {
+    console.log("Record " + req.params.file_name + " stopped");
+    record.stopRecord();
+    res.send({recordFileID: 123, recordFilePath: req.params.file_name, state: "recordingStop"});
+});
 
 // routes ===========================================================================
     //api ---------------------------------------------------------------------------
@@ -333,45 +308,6 @@ var stopRecord = function() {
         res.send({selectedFileID: selectedFileID, selectedFilePath: selectedFilePath, serverStatus: serverStatus});
     });
 
-    //play a file
-    app.get('/api/play/:file_id', function(req, res, next) {
-        getFilePath(req.params.file_id, function(filepath) {
-            if(filepath != "error") {
-               selectedFileID = req.params.file_id;
-               selectedFilePath = filepath;
-                console.log("play: " + selectedFilePath);
-                console.log("play: " + selectedFileID);
-
-                serverStatus = "Reading file";
-               sendPushNotification(UPDATE_STATUS);
-               readAndSend(filepath, function (result) {        //Push Notifications will be send inside readAndSend
-                       res.send();
-                   setTimeout(function() {  //After 20 Seconds, send Update to Client
-                       serverStatus = DEFAULTSTATUS;
-                       sendPushNotification(UPDATE_STATUS);
-                   },20000);
-               });
-           }
-           else {
-               serverStatus = "FileIO-Error! Please refresh site!";
-               sendPushNotification(UPDATE_STATUS);
-            res.send();
-           }
-       })
-    });
-
-    //start record a file
-    app.get('/api/startrecord/:file_name', function(req, res, next) {
-        console.log("Record " + req.params.file_name + " started");
-        res.send({recordFileID: 123, recordFilePath: req.params.file_name, state: "recordingStart"});
-    });
-
-    //stop record a file
-    app.get('/api/stoprecord/:file_name', function(req, res, next) {
-        console.log("Record " + req.params.file_name + " stopped");
-        res.send({recordFileID: 123, recordFilePath: req.params.file_name, state: "recordingStop"});
-    });
-
 // init & start server (start server with "node server.js") ===========================
 //Init =====================
     //Read Folder Content
@@ -379,12 +315,27 @@ var stopRecord = function() {
         files = content;
     });
 
-    //recordPackages('eth0','hansdieter.pcap');
-
-setTimeout(function() {
-    stopRecord();
-},50000);
-
     //Start Server
     http.listen(8080);
     console.log("server listening on port 8080");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
