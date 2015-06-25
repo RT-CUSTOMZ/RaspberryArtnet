@@ -91,6 +91,37 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
                 $http.get("/api/play/" + selectedFileID).then(function(Response){}) //ack will come through notification
             },
 
+            storePlayerSettings: function(Destination, Port, Loop, callback) {
+                var resultDestination = false;
+                var resultPort = false;
+                var resultLoop = false;
+
+                console.log("Save Settings");
+                console.log("Destination: " + Destination);
+                $http.get("/api/playsettings/destination/" + Destination).then(function(ResponseDestination){
+                    resultDestination = (ResponseDestination.data.success.toString() === "true");
+
+                    console.log("Port: " + Port);
+                    $http.get("/api/playsettings/port/" + Port).then(function(ResponsePort){
+                        resultPort = (ResponsePort.data.success.toString() === "true");
+
+                        console.log("Loop: " + Loop);
+                        $http.get("/api/playsettings/loop/" + Loop).then(function(ResponseLoop){
+                            resultLoop = (ResponseLoop.data.success.toString() === "true");
+
+                            if(resultDestination && resultPort && resultLoop)
+                                callback(ResponseDestination.data.destination.toString(),
+                                    ResponsePort.data.port.toString(),
+                                    ResponseLoop.data.loop.toString(), true);
+                            else
+                                callback(ResponseDestination.data.destination.toString(),
+                                    ResponsePort.data.port.toString(),
+                                    ResponseLoop.data.loop.toString(), false);
+                        })
+                    })
+                })
+            },
+
             startRecordFile: function(FileRecordName, callback) {
                 console.log("record start: " + FileRecordName);
                 $http.get("/api/startrecord/" + FileRecordName).then(function(Response) {
@@ -251,8 +282,10 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
     })
 
     //controller of player.html-partial
-    .controller('FilePlayCtrl', function($scope, fileFactory, socket) {
+    .controller('FilePlayCtrl', function($scope, fileFactory, socket, $timeout) {
+        $scope.RepeatPlaying = true;
         $scope.PlayerMsg = {};
+        $scope.SettingsSaved = false;
 
 //Init Serverstate and get Serverstate to webapp
         fileFactory.getSelectedFile(function (Response) {
@@ -279,6 +312,36 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
             fileFactory.playFile();
         }
 
+        $scope.togglePlaying = function() {
+            if($scope.RepeatPlaying)
+                $scope.RepeatPlaying = false;
+            else
+                $scope.RepeatPlaying = true;
+        }
+
+        $scope.saveSettings = function() {
+            console.log($scope.destinationIP);
+            console.log($scope.destinationPort);
+
+            fileFactory.storePlayerSettings($scope.destinationIP, $scope.destinationPort, $scope.RepeatPlaying,
+                function(ResponseDestination, ResponsePort, ResponseLoop, success) {
+
+                if(success)
+                    $scope.SettingsValid = true;
+                else
+                    $scope.SettingsValid = false;
+
+                $scope.destinationIP = ResponseDestination;
+                $scope.destinationPort = ResponsePort;
+                $scope.RepeatPlaying = ResponseLoop;
+
+                //Hide info-bar after 10 Seconds
+                $timeout(function(){
+                    $scope.SettingsSaved = false;
+                },10000);
+            });
+
+        }
 
 //PushNotfications
         socket.on('status', function (data) {

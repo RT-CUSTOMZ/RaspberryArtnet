@@ -1,8 +1,8 @@
 <!-- Upload File -->
 <div class="container" id="play">
     <div class="jumbotron">
-        <h3>Player <span class="alert alert-info pull-right" style="font-size:15px">{{PlayerMsg.status}}</span></h3>
-
+        <h3 class="glyphicon glyphicon-play-circle"> Player</h3>
+        <h3> <span class="alert alert-info pull-right" style="font-size:15px">{{PlayerMsg.status}}</span></h3>
 
         <hr>
             <span ng-hide="selectedFilePath" class="alert alert-warning" style="font-size:20px">No file Selected</span>
@@ -14,5 +14,47 @@
             </span>
         </div>
         <br>
+    </div>
+
+    <div class="jumbotron">
+        <h3 class="glyphicon glyphicon-cog"> Settings</h3>
+        <h3> SETTINGS MUESSEN NOCH BEIM SEITENAUFRUF GELADEN WERDEN!!!!</h3>
+        <br><hr>
+
+        <span ng-show="SettingsSaved">
+            <div ng-show="SettingsValid">
+                <span class="alert alert-success" style="font-size:20px">Einstellungen gespeichert</span>
+            </div>
+
+            <div ng-hide="SettingsValid">
+                <span class="alert alert-warning" style="font-size:20px">Einstellungen fehlerhaft!</span>
+            </div>
+            <br>
+        </span>
+
+        <div ng-show="RepeatPlaying">
+                 <a href class="btn btn-success btn-sm" ng-click="togglePlaying()"><span class="glyphicon glyphicon-retweet"> Wiederholen an</a>
+        </div>
+        <div ng-hide="RepeatPlaying">
+            <a href class="btn btn-danger btn-sm" ng-click="togglePlaying()"><span class="glyphicon glyphicon-retweet"> Wiederholen aus</a>
+        </div>
+
+        <br>
+
+        <div class="input-group">
+            <span class="input-group-addon">Destination-IP</span>
+            <input type="text" class="form-control" placeholder="Destination-IP" ng-model="destinationIP">
+        </div>
+
+        <br>
+        <div class="input-group">
+            <span class="input-group-addon">Destination-Port</span>
+            <input type="text" class="form-control" placeholder="Destination-Port" ng-model="destinationPort">
+        </div>
+
+        <br><hr>
+        <span class="pull-right">
+            <a href class="btn btn-success btn-sm" ng-click="saveSettings()"><span class="glyphicon glyphicon-floppy-disk"></span> Speichern</a>
+        </span>
     </div>
 </div>

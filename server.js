@@ -32,6 +32,11 @@
     var serverStatus = DEFAULTSTATUS;
     var serverError = "";
 
+//Player
+    var Destination = "unknown";
+    var Port = 6454;
+    var Loop = true;
+
 // configuration ======================================================================
     app.use(morgan('dev'));                                         // log every request to the console
     app.use(bodyParser.urlencoded({'extended':'true'}));            // parse application/x-www-form-urlencoded
@@ -196,6 +201,14 @@
         });
     }
 
+//IP Validation
+    var isValidIP = function(ipaddress, callback) {
+        if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress))
+            callback(true);
+        else
+            callback (false)
+    }
+
 //Sending Packages =====================
 //play a file
 app.get('/api/play/:file_id', function(req, res, next) {
@@ -209,7 +222,7 @@ app.get('/api/play/:file_id', function(req, res, next) {
             serverStatus = "Processing file";
             sendPushNotification(UPDATE_STATUS);
 
-            send.playFile(selectedFilePath,"192.168.120.2",6454);
+            send.playFile(selectedFilePath, Destination, Port, Loop);
 
             setTimeout(function() {  //After 20 Seconds, send Update to Client
                 send.stopFile();
@@ -222,6 +235,38 @@ app.get('/api/play/:file_id', function(req, res, next) {
             res.send();
         }
     })
+});
+
+app.get('/api/playsettings/destination/:destination', function(req, res, next) {
+    console.log("Setting Destination received: " + req.params.destination);
+    isValidIP(req.params.destination.toString(), function(result) {
+        if(result) {
+            Destination = req.params.destination;
+            res.send({success: true, destination: Destination});
+        }
+        else
+            res.send({success: false, destination: Destination});
+    });
+});
+
+app.get('/api/playsettings/port/:port', function(req, res, next) {
+    console.log("Setting port received: " + req.params.port);
+    if(!isNaN(parseInt(req.params.port))) {
+        Port = req.params.port;
+        res.send({success: true, port: Port});
+    }
+    else
+        res.send({success: false, port: Port});
+});
+
+app.get('/api/playsettings/loop/:loop', function(req, res, next) {
+    console.log("Setting Loop received: " + req.params.loop);
+    if(req.params.loop == "true" || req.params.loop == "false") {
+        Loop = req.params.loop;
+        res.send({success: true, loop: Loop});
+    }
+    else
+        res.send({success: false, loop: Loop});
 });
 
 //Recording Packages ===================
