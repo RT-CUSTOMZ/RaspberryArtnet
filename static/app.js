@@ -122,6 +122,15 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
                 })
             },
 
+            getPlayerSettings: function(callback) {
+                $http.get("/api/playsettings/get").then(function(Response){
+                    callback(
+                        Response.data.destination.toString(),
+                        Response.data.port.toString(),
+                        Response.data.loop.toString());
+                });
+            },
+
             startRecordFile: function(FileRecordName, callback) {
                 console.log("record start: " + FileRecordName);
                 $http.get("/api/startrecord/" + FileRecordName).then(function(Response) {
@@ -283,6 +292,7 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
 
     //controller of player.html-partial
     .controller('FilePlayCtrl', function($scope, fileFactory, socket, $timeout) {
+
         $scope.RepeatPlaying = true;
         $scope.PlayerMsg = {};
         $scope.SettingsSaved = false;
@@ -295,6 +305,12 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
             }
             $scope.PlayerMsg.status = Response.serverStatus;
         });   //get selected Filepath, ID and Status from server
+
+        fileFactory.getPlayerSettings(function(Destination, Port, Loop){
+            $scope.destinationIP = Destination;
+            $scope.destinationPort = Port;
+            $scope.RepeatPlaying = Loop;
+        });
 
 //Actions
         $scope.removeSelectedFilePath = function() {    //this should be called from angular

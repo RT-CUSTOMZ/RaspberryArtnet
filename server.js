@@ -224,8 +224,14 @@ app.get('/api/play/:file_id', function(req, res, next) {
 
             send.playFile(selectedFilePath, Destination, Port, Loop);
 
+            serverStatus = "Sending file";
+            sendPushNotification(UPDATE_STATUS);
+
             setTimeout(function() {  //After 20 Seconds, send Update to Client
                 send.stopFile();
+                serverStatus = "Sending file stopped";
+                sendPushNotification(UPDATE_STATUS);
+
             },20000);
 
         }
@@ -237,6 +243,8 @@ app.get('/api/play/:file_id', function(req, res, next) {
     })
 });
 
+//Playersettings
+//set Player Destination
 app.get('/api/playsettings/destination/:destination', function(req, res, next) {
     console.log("Setting Destination received: " + req.params.destination);
     isValidIP(req.params.destination.toString(), function(result) {
@@ -249,6 +257,7 @@ app.get('/api/playsettings/destination/:destination', function(req, res, next) {
     });
 });
 
+//set Player Port
 app.get('/api/playsettings/port/:port', function(req, res, next) {
     console.log("Setting port received: " + req.params.port);
     if(!isNaN(parseInt(req.params.port))) {
@@ -259,6 +268,7 @@ app.get('/api/playsettings/port/:port', function(req, res, next) {
         res.send({success: false, port: Port});
 });
 
+//set Player Loop
 app.get('/api/playsettings/loop/:loop', function(req, res, next) {
     console.log("Setting Loop received: " + req.params.loop);
     if(req.params.loop == "true" || req.params.loop == "false") {
@@ -268,6 +278,12 @@ app.get('/api/playsettings/loop/:loop', function(req, res, next) {
     else
         res.send({success: false, loop: Loop});
 });
+
+//get Player settings
+app.get('/api/playsettings/get', function(req, res, next) {
+    res.send({destination: Destination, port: Port, loop:Loop});
+});
+
 
 //Recording Packages ===================
 //start record a file
