@@ -211,7 +211,7 @@
 
 //Sending Packages =====================
 //play a file
-app.get('/api/play/:file_id', function(req, res, next) {
+app.get('/api/startPlaying/:file_id', function(req, res, next) {
     getFilePath(req.params.file_id, function(filepath) {
         if(filepath != "error") {
             selectedFileID = req.params.file_id;
@@ -310,10 +310,13 @@ app.get('/api/stoprecord/:file_name', function(req, res, next) {
     });
 
     //delete a file
-    app.delete('/api/files/:file_id', function(req, res, next) {
+    app.delete('/api/removefile/:file_id', function(req, res, next) {
         getFilePath(req.params.file_id, function(filepath) {
             removeFile(filepath);
-            sendPushNotification(UPDATE_FILESELECTED);
+            getFolderContent(function(files) {
+                res.json(files);
+                sendPushNotification(UPDATE_FILESELECTED);
+            })
         })
     });
 

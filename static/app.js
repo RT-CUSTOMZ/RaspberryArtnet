@@ -43,13 +43,6 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
                 return files;
             },
 
-            //just for updating files, when push notification comes in with data
-            updateFiles: function(serverMessage){
-                //selectedFilePath = serverMessage.filepath;
-                //selectedFileID = serverMessage.fileid;
-                angular.copy(serverMessage.files, files);
-            },
-
             selectFile: function(filepath, fileid){
                 selectedFilePath = filepath;
                 selectedFileID = fileid;
@@ -63,7 +56,7 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
 
             removeFile: function(fileid){ //deletes a file from server
                console.log("Remove");
-                $http.delete("/api/files/" + fileid).then(function(Response){
+                $http.delete("/api/removefile/" + fileid).then(function(Response){
                     angular.copy(Response.data, files);  //Update Data
                 })
             },
@@ -88,7 +81,17 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
 
             playFile: function() {
                 console.log("play: " + selectedFileID);
-                $http.get("/api/play/" + selectedFileID).then(function(Response){}) //ack will come through notification
+                $http.get("/api/startPlaying/" + selectedFileID).then(function(Response){}) //ack will come through notification
+            },
+
+            stopFile: function(callback) {
+                console.log("stop: " + selectedFileID);
+                $http.get("/api/stopPlaying/" + selectedFileID).then(function(Response){
+                    if(Response.data.success == "true")
+                        callback(true);
+                    else
+                        callback(false);
+                })
             },
 
             storePlayerSettings: function(Destination, Port, Loop, callback) {
@@ -325,7 +328,18 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
         }
 
         $scope.playFile = function() {
+            $scope.filePlayingActive = true;
             fileFactory.playFile();
+        }
+
+        $scope.stopFile = function() {
+            $scope.filePlayingActive = false;
+            fileFactory.stopFile(function(result) {
+                if(result)
+                    console.log("play stop");
+                else
+                    console.log("Dedüm");
+            });
         }
 
         $scope.togglePlaying = function() {
@@ -356,7 +370,14 @@ angular.module('picube', ['angularFileUpload', 'ngRoute'])
                     $scope.SettingsSaved = false;
                 },10000);
             });
+        }
 
+        $scope.getSettings = function() {
+            fileFactory.getPlayerSettings(function(Destination, Port, Loop){
+                $scope.destinationIP = Destination;
+                $scope.destinationPort = Port;
+                $scope.RepeatPlaying = Loop;
+            });
         }
 
 //PushNotfications
